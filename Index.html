@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Мощность на приёмнике</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+html,body { background:#f0f4f8; color:#1a2540; font-family:ui-monospace,'SF Mono',Menlo,'Courier New',monospace; }
+body { max-width:480px; margin:0 auto; padding-bottom:40px; }
+
+.hdr { background:#fff; padding:18px 20px 14px; border-bottom:1px solid #e2e8f0; }
+.hdr h1 { font-size:19px; font-weight:800; color:#0f172a; }
+.hdr p  { font-size:10px; color:#94a3b8; letter-spacing:.12em; margin-top:3px; }
+.chips  { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+.chip   { background:#f1f5f9; border:1.5px solid #e2e8f0; color:#64748b; border-radius:20px; padding:6px 15px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+.chip.on { background:#0ea5e9; border-color:#0ea5e9; color:#fff; }
+
+/* RESULT */
+.res { padding:24px 20px 20px; text-align:center; transition:background .3s; }
+.res-lbl  { font-size:10px; color:#94a3b8; letter-spacing:.2em; margin-bottom:8px; }
+.res-big  { font-size:62px; font-weight:900; line-height:1; transition:color .3s; }
+.res-unit { font-size:20px; font-weight:800; margin-left:4px; }
+.res-sub  { margin-top:6px; font-size:13px; transition:color .3s; }
+.res-warn { margin-top:10px; font-size:12px; font-weight:600; padding:6px 14px; border-radius:20px; display:inline-block; transition:all .3s; }
+.zone-good { background:linear-gradient(135deg,#052e16,#14532d); }
+.zone-ok   { background:linear-gradient(135deg,#1c1917,#292524); }
+.zone-bad  { background:linear-gradient(135deg,#450a0a,#7f1d1d); }
+.zone-good .res-big  { color:#4ade80; } .zone-good .res-unit { color:#4ade80; }
+.zone-ok   .res-big  { color:#fbbf24; } .zone-ok   .res-unit { color:#fbbf24; }
+.zone-bad  .res-big  { color:#f87171; } .zone-bad  .res-unit { color:#f87171; }
+.zone-good .res-sub  { color:#86efac; } .zone-ok .res-sub { color:#fcd34d; } .zone-bad .res-sub { color:#fca5a5; }
+.zone-good .res-warn { background:#14532d; color:#4ade80; }
+.zone-ok   .res-warn { background:#292524; color:#fbbf24; }
+.zone-bad  .res-warn { background:#7f1d1d; color:#f87171; }
+.pills { display:flex; justify-content:center; gap:8px; margin-top:14px; flex-wrap:wrap; }
+.pill  { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:7px 12px; }
+.pill span.l { font-size:9px; color:#64748b; letter-spacing:.1em; display:block; margin-bottom:2px; }
+.pill span.v { font-size:13px; font-weight:700; }
+
+/* ПАРАМЕТРЫ */
+.sls { background:#fff; margin-top:10px; }
+.sr  { padding:14px 20px 12px; border-bottom:1px solid #f1f5f9; }
+.st  { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:8px; }
+.sn  { font-size:13px; color:#64748b; flex-shrink:0; }
+
+/* Поле ввода + единица */
+.input-wrap { display:flex; align-items:center; gap:6px; }
+.num-input {
+  width:90px; padding:5px 8px;
+  font-size:15px; font-weight:700; font-family:inherit;
+  border:1.5px solid #e2e8f0; border-radius:8px;
+  background:#f8fafc; color:#0f172a;
+  text-align:right; outline:none;
+  -webkit-appearance:none; appearance:none;
+}
+.num-input:focus { border-color:#0ea5e9; background:#fff; }
+.num-unit { font-size:12px; color:#94a3b8; min-width:28px; }
+
+/* Слайдер */
+input[type=range] {
+  -webkit-appearance:none; appearance:none;
+  display:block; width:100%; height:5px; border-radius:5px;
+  outline:none; cursor:pointer; border:none; margin-top:2px;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; appearance:none;
+  width:26px; height:26px; border-radius:50%;
+  border:3px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.22); cursor:pointer;
+}
+input[type=range]::-moz-range-thumb {
+  width:26px; height:26px; border-radius:50%;
+  border:3px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.22); cursor:pointer;
+}
+#sD::-webkit-slider-thumb { background:#0ea5e9; } #sD::-moz-range-thumb { background:#0ea5e9; }
+#sP::-webkit-slider-thumb { background:#16a34a; } #sP::-moz-range-thumb { background:#16a34a; }
+#sT::-webkit-slider-thumb { background:#2563eb; } #sT::-moz-range-thumb { background:#2563eb; }
+#sR::-webkit-slider-thumb { background:#7c3aed; } #sR::-moz-range-thumb { background:#7c3aed; }
+#sF::-webkit-slider-thumb { background:#ea580c; } #sF::-moz-range-thumb { background:#ea580c; }
+.sh { display:flex; justify-content:space-between; margin-top:5px; font-size:10px; color:#cbd5e1; }
+
+/* БЮДЖЕТ */
+.tbl { background:#fff; margin-top:10px; }
+.tbl-head { padding:13px 20px 9px; font-size:10px; color:#94a3b8; letter-spacing:.18em; font-weight:600; border-bottom:1px solid #f1f5f9; }
+.tbl-row  { padding:12px 20px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; }
+.tbl-lbl  { font-size:13px; color:#475569; }
+.tbl-val  { font-size:14px; font-weight:700; }
+
+.ft { background:#fff; margin-top:10px; padding:15px 20px; font-size:11px; color:#94a3b8; line-height:2; }
+.ft b { color:#475569; }
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>Мощность на Rx</h1>
+  <p>ЗАВИСИМОСТЬ ОТ РАССТОЯНИЯ · ФРИЙС</p>
+  <div class="chips">
+    <button class="chip" id="pr-starlink">Starlink</button>
+    <button class="chip" id="pr-wifi">Wi-Fi 2.4</button>
+    <button class="chip" id="pr-lte">LTE 1.8</button>
+    <button class="chip on" id="pr-example">Пример</button>
+  </div>
+</div>
+
+<div class="res zone-ok" id="res-block">
+  <div class="res-lbl">МОЩНОСТЬ НА ПРИЁМНИКЕ</div>
+  <div>
+    <span class="res-big" id="rn">−50.0</span>
+    <span class="res-unit">дБм</span>
+  </div>
+  <div class="res-sub" id="rsub">10.00 нВт</div>
+  <div class="res-warn" id="rwarn">~ Сигнал приемлемый</div>
+  <div class="pills">
+    <div class="pill"><span class="l">ЭИИМ</span><span class="v" id="pE" style="color:#4ade80">36.0 дБм</span></div>
+    <div class="pill"><span class="l">FSPL</span><span class="v" id="pF" style="color:#f87171">86.0 дБ</span></div>
+    <div class="pill"><span class="l">λ</span>   <span class="v" id="pL" style="color:#fb923c">1.88 см</span></div>
+  </div>
+</div>
+
+<div class="sls">
+
+  <!-- РАССТОЯНИЕ -->
+  <div class="sr">
+    <div class="st">
+      <span class="sn">📏 Расстояние</span>
+      <div class="input-wrap">
+        <input class="num-input" type="number" id="nD" value="29.8" min="0.01" step="1" style="color:#0ea5e9;border-color:#bae6fd">
+        <span class="num-unit" id="uD">м</span>
+      </div>
+    </div>
+    <input type="range" id="sD" min="-2" max="6" step="0.01" value="1.474">
+    <div class="sh"><span>1 см</span><span>1000 км</span></div>
+  </div>
+
+  <!-- МОЩНОСТЬ TX -->
+  <div class="sr">
+    <div class="st">
+      <span class="sn">Мощность Tx</span>
+      <div class="input-wrap">
+        <input class="num-input" type="number" id="nP" value="2" min="0.001" step="0.1" style="color:#16a34a;border-color:#bbf7d0">
+        <span class="num-unit">Вт</span>
+      </div>
+    </div>
+    <input type="range" id="sP" min="-3" max="4" step="0.01" value="0.301">
+    <div class="sh"><span>1 мВт</span><span>10 кВт</span></div>
+  </div>
+
+  <!-- КУ TX -->
+  <div class="sr">
+    <div class="st">
+      <span class="sn">КУ антенны Tx</span>
+      <div class="input-wrap">
+        <input class="num-input" type="number" id="nT" value="3" min="0" max="60" step="0.5" style="color:#2563eb;border-color:#bfdbfe">
+        <span class="num-unit">дБи</span>
+      </div>
+    </div>
+    <input type="range" id="sT" min="0" max="60" step="0.5" value="3">
+    <div class="sh"><span>0 дБи</span><span>60 дБи</span></div>
+  </div>
+
+  <!-- КУ RX -->
+  <div class="sr">
+    <div class="st">
+      <span class="sn">КУ антенны Rx</span>
+      <div class="input-wrap">
+        <input class="num-input" type="number" id="nR" value="0" min="0" max="60" step="0.5" style="color:#7c3aed;border-color:#ddd6fe">
+        <span class="num-unit">дБи</span>
+      </div>
+    </div>
+    <input type="range" id="sR" min="-1" max="60" step="0.5" value="0">
+    <div class="sh"><span>0 дБи</span><span>60 дБи</span></div>
+  </div>
+
+  <!-- ЧАСТОТА -->
+  <div class="sr">
+    <div class="st">
+      <span class="sn">Частота</span>
+      <div class="input-wrap">
+        <input class="num-input" type="number" id="nF" value="16" min="0.1" max="100" step="0.1" style="color:#ea580c;border-color:#fed7aa">
+        <span class="num-unit">ГГц</span>
+      </div>
+    </div>
+    <input type="range" id="sF" min="-1" max="2" step="0.01" value="1.204">
+    <div class="sh"><span>100 МГц</span><span>100 ГГц</span></div>
+  </div>
+
+</div>
+
+<!-- БЮДЖЕТ ЛИНИИ -->
+<div class="tbl">
+  <div class="tbl-head">БЮДЖЕТ ЛИНИИ</div>
+  <div class="tbl-row"><span class="tbl-lbl">Мощность Tx</span>   <span class="tbl-val" id="tPtx"  style="color:#16a34a">+33.0 дБм</span></div>
+  <div class="tbl-row"><span class="tbl-lbl">КУ антенны Tx</span> <span class="tbl-val" id="tGtx"  style="color:#2563eb">+3.0 дБи</span></div>
+  <div class="tbl-row"><span class="tbl-lbl">= ЭИИМ</span>        <span class="tbl-val" id="tEirp" style="color:#4ade80">36.0 дБм</span></div>
+  <div class="tbl-row"><span class="tbl-lbl">Потери FSPL</span>   <span class="tbl-val" id="tFspl" style="color:#f87171">−86.0 дБ</span></div>
+  <div class="tbl-row"><span class="tbl-lbl">КУ антенны Rx</span> <span class="tbl-val" id="tGrx"  style="color:#7c3aed">+0.0 дБи</span></div>
+  <div class="tbl-row" style="background:#f8fafc">
+    <span class="tbl-lbl" style="font-weight:700;color:#0f172a">= Мощность на Rx</span>
+    <span class="tbl-val" id="tRx" style="color:#0ea5e9">−50.0 дБм</span>
+  </div>
+</div>
+
+<div class="ft">
+  <b>Формула:</b> P_rx = ЭИИМ − FSPL + G_rx<br>
+  FSPL = 20·log(4πRf/c)<br>
+  <span id="fd">f = 16.00 ГГц · λ = 1.875 см</span>
+</div>
+
+<script>
+(function() {
+  var C = 3e8, PI = Math.PI;
+
+  // Конфиг слайдеров (логарифмические: D, P, F)
+  var SL = {
+    sD: { mn:-2, mx:6,   color:'#0ea5e9' },
+    sP: { mn:-3, mx:4,   color:'#16a34a' },
+    sT: { mn:0,  mx:60,  color:'#2563eb' },
+    sR: { mn:-1, mx:60,  color:'#7c3aed' },
+    sF: { mn:-1, mx:2,   color:'#ea580c' }
+  };
+
+  // Преобразования: числовое поле → логарифм → слайдер
+  function toLog(v)  { return Math.log10(Math.max(v, 1e-6)); }
+  function fromLog(l){ return Math.pow(10, l); }
+
+  var PRESETS = {
+    starlink: { D:550000, P:400,  T:35, R:36, F:12.5 },
+    wifi:     { D:50,     P:0.1,  T:3,  R:3,  F:2.4  },
+    lte:      { D:5000,   P:20,   T:18, R:0,  F:1.8  },
+    example:  { D:29.8,   P:2,    T:3,  R:0,  F:16   }
+  };
+
+  function g(id) { return document.getElementById(id); }
+
+  function setTrack(id, logVal) {
+    var s = SL[id], pct = ((logVal - s.mn) / (s.mx - s.mn) * 100).toFixed(1);
+    g(id).style.background = 'linear-gradient(90deg,' + s.color + ' ' + pct + '%,#e2e8f0 ' + pct + '%)';
+  }
+
+  function fmtW(w) {
+    if (w >= 1000)  return (w/1000).toFixed(2) + ' кВт';
+    if (w >= 1)     return w.toFixed(3) + ' Вт';
+    if (w >= 1e-3)  return (w*1e3).toFixed(2) + ' мВт';
+    if (w >= 1e-6)  return (w*1e6).toFixed(2) + ' мкВт';
+    if (w >= 1e-9)  return (w*1e9).toFixed(2) + ' нВт';
+    if (w >= 1e-12) return (w*1e12).toFixed(2) + ' пВт';
+    return (w*1e15).toFixed(1) + ' фВт';
+  }
+
+  function fmtDist(m) {
+    if (m < 0.01)  return (m*1000).toFixed(1) + ' мм';
+    if (m < 1)     return (m*100).toFixed(1) + ' см';
+    if (m < 1000)  return m.toFixed(1) + ' м';
+    if (m < 1e6)   return (m/1000).toFixed(2) + ' км';
+    return (m/1e6).toFixed(2) + ' тыс.км';
+  }
+
+  function getVals() {
+    return {
+      R_m: parseFloat(g('nD').value) || 1,
+      Ptx: parseFloat(g('nP').value) || 1,
+      Gtx: parseFloat(g('nT').value) || 0,
+      Grx: Math.max(0, parseFloat(g('nR').value) || 0),
+      f:   parseFloat(g('nF').value) || 1
+    };
+  }
+
+  function compute(v) {
+    var ptx_dBm = 10 * Math.log10(Math.max(v.Ptx, 1e-9)) + 30;
+    var eirp    = ptx_dBm + v.Gtx;
+    var fspl    = 20 * Math.log10((4 * PI * Math.max(v.R_m, 1e-4) * v.f * 1e9) / C);
+    var prx_dBm = eirp - fspl + v.Grx;
+    var prx_W   = Math.pow(10, (prx_dBm - 30) / 10);
+    var lam     = C / (v.f * 1e9) * 100;
+    return { ptx_dBm:ptx_dBm, eirp:eirp, fspl:fspl, prx_dBm:prx_dBm, prx_W:prx_W, lam:lam };
+  }
+
+  function render(v, r) {
+    // Результат
+    g('rn').textContent   = r.prx_dBm.toFixed(1);
+    g('rsub').textContent = fmtW(r.prx_W);
+
+    var block = g('res-block'), warn = g('rwarn');
+    if (r.prx_dBm > -60) {
+      block.className = 'res zone-good';
+      warn.textContent = '✓ Сигнал отличный';
+    } else if (r.prx_dBm > -90) {
+      block.className = 'res zone-ok';
+      warn.textContent = '~ Сигнал приемлемый';
+    } else {
+      block.className = 'res zone-bad';
+      warn.textContent = '✗ Сигнал слабый / нет связи';
+    }
+
+    // Пилюли
+    g('pE').textContent = r.eirp.toFixed(1) + ' дБм';
+    g('pF').textContent = r.fspl.toFixed(1) + ' дБ';
+    g('pL').textContent = r.lam.toFixed(2) + ' см';
+
+    // Бюджет
+    g('tPtx').textContent  = '+' + r.ptx_dBm.toFixed(1) + ' дБм';
+    g('tGtx').textContent  = '+' + v.Gtx.toFixed(1) + ' дБи';
+    g('tEirp').textContent = r.eirp.toFixed(1) + ' дБм';
+    g('tFspl').textContent = '−' + r.fspl.toFixed(1) + ' дБ';
+    g('tGrx').textContent  = '+' + v.Grx.toFixed(1) + ' дБи';
+    g('tRx').textContent   = r.prx_dBm.toFixed(1) + ' дБм';
+
+    g('fd').textContent = 'f = ' + v.f.toFixed(2) + ' ГГц  ·  λ = ' + r.lam.toFixed(3) + ' см';
+  }
+
+  function syncSlidersFromInputs() {
+    var v = getVals();
+    // Обновить слайдеры
+    var dLog = toLog(v.R_m);
+    var pLog = toLog(v.Ptx);
+    var fLog = toLog(v.f);
+    // Clamping
+    dLog = Math.max(SL.sD.mn, Math.min(SL.sD.mx, dLog));
+    pLog = Math.max(SL.sP.mn, Math.min(SL.sP.mx, pLog));
+    fLog = Math.max(SL.sF.mn, Math.min(SL.sF.mx, fLog));
+    var gtx = Math.max(0,  Math.min(60, v.Gtx));
+    var grx = Math.max(-1, Math.min(60, v.Grx));
+
+    g('sD').value = dLog; setTrack('sD', dLog);
+    g('sP').value = pLog; setTrack('sP', pLog);
+    g('sT').value = gtx;  setTrack('sT', gtx);
+    g('sR').value = grx;  setTrack('sR', grx);
+    g('sF').value = fLog; setTrack('sF', fLog);
+
+    // Подпись единицы расстояния
+    g('uD').textContent = v.R_m >= 1e6 ? 'тыс.км' : v.R_m >= 1000 ? 'км' : v.R_m >= 1 ? 'м' : 'см';
+
+    render(v, compute(v));
+  }
+
+  function syncInputsFromSliders() {
+    var dLog = parseFloat(g('sD').value);
+    var pLog = parseFloat(g('sP').value);
+    var gtx  = parseFloat(g('sT').value);
+    var grx  = parseFloat(g('sR').value);
+    var fLog = parseFloat(g('sF').value);
+
+    var R_m = fromLog(dLog);
+    var Ptx = fromLog(pLog);
+    var f   = fromLog(fLog);
+    var Grx = Math.max(0, grx);
+
+    setTrack('sD', dLog); setTrack('sP', pLog);
+    setTrack('sT', gtx);  setTrack('sR', grx);
+    setTrack('sF', fLog);
+
+    // Обновить числовые поля красиво
+    g('nD').value = R_m >= 1000 ? (R_m/1000).toFixed(2) : R_m.toFixed(R_m < 10 ? 2 : 1);
+    g('uD').textContent = R_m >= 1e6 ? 'тыс.км' : R_m >= 1000 ? 'км' : 'м';
+    // Для числовых полей — в реальных единицах
+    g('nD').value = parseFloat(fmtDist(R_m).replace(/[^\d.]/g,''));
+    g('nP').value = Ptx >= 1 ? Ptx.toFixed(2) : (Ptx*1000).toFixed(1);
+    g('nT').value = gtx.toFixed(1);
+    g('nR').value = Grx.toFixed(1);
+    g('nF').value = f.toFixed(2);
+
+    var v = { R_m:R_m, Ptx:Ptx, Gtx:gtx, Grx:Grx, f:f };
+    render(v, compute(v));
+  }
+
+  function applyPreset(name) {
+    var p = PRESETS[name];
+    g('nD').value = p.D;
+    g('nP').value = p.P;
+    g('nT').value = p.T;
+    g('nR').value = p.R;
+    g('nF').value = p.F;
+    document.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('on'); });
+    var btn = g('pr-' + name);
+    if (btn) btn.classList.add('on');
+    syncSlidersFromInputs();
+  }
+
+  function init() {
+    // Слайдеры
+    ['sD','sP','sT','sR','sF'].forEach(function(id) {
+      var el = g(id);
+      el.addEventListener('input',  syncInputsFromSliders);
+      el.addEventListener('change', syncInputsFromSliders);
+    });
+
+    // Числовые поля
+    ['nD','nP','nT','nR','nF'].forEach(function(id) {
+      var el = g(id);
+      el.addEventListener('input',  syncSlidersFromInputs);
+      el.addEventListener('change', syncSlidersFromInputs);
+    });
+
+    // Пресеты
+    ['starlink','wifi','lte','example'].forEach(function(name) {
+      var btn = g('pr-' + name);
+      if (btn) btn.addEventListener('click', function(){ applyPreset(name); });
+    });
+
+    syncSlidersFromInputs();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
